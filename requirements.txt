@@ -1,11 +1,12 @@
 streamlit
 pandas
-numpy
 plotly
+sqlalchemy
 langchain
 langchain-groq
-python-dotenv
 groq
 speechrecognition
 gtts
-faiss-cpu
+kaleido
+python-dotenv
+pysqlite3-binary
