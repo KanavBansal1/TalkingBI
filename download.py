@@ -16,4 +16,8 @@ def download_chart(fig):
 
     except Exception:
 
-        st.info("Chart download not supported in cloud. Download data instead.")
+        st.download_button(
+            "Download Chart HTML",
+            fig.to_html(),
+            "chart.html"
+        )
