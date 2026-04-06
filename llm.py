@@ -6,5 +6,5 @@ api_key = os.getenv("GROQ_API_KEY") or st.secrets["GROQ_API_KEY"]
 
 llm = ChatGroq(
     groq_api_key=api_key,
-    model_name="llama3-8b-8192"
+    model_name="llama-3.1-8b-instant"
 )
