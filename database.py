@@ -9,7 +9,21 @@ def connect_database(connection_string):
     return engine
 
 
+import pandas as pd
+from sqlalchemy import create_engine, text
+
+
+def connect_database(connection_string):
+
+    engine = create_engine(connection_string)
+
+    return engine
+
+
 def run_query(engine, query):
+
+    # Convert query to string
+    query = str(query)
 
     # Read only protection
     if not query.lower().strip().startswith("select"):

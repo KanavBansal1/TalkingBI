@@ -17,9 +17,11 @@ from download import download_chart
 from dashboard_cards import show_dashboard_cards
 from insights import generate_insights
 
+
 st.set_page_config(layout="wide")
 
 st.title("🎙️ Talking BI")
+
 
 # -----------------------------
 # Authentication
@@ -69,13 +71,14 @@ if not st.session_state.logged_in:
 
 
 # Logout
+
 if st.sidebar.button("Logout"):
     st.session_state.logged_in = False
     st.rerun()
 
 
 # -----------------------------
-# Theme Selection
+# Theme
 # -----------------------------
 
 st.sidebar.title("Theme")
@@ -86,6 +89,29 @@ theme = st.sidebar.selectbox(
 )
 
 apply_theme(theme)
+
+
+# -----------------------------
+# Upload Dataset
+# -----------------------------
+
+st.sidebar.title("Upload Dataset")
+
+uploaded_file = st.sidebar.file_uploader(
+    "Upload CSV or Excel",
+    type=["csv", "xlsx"]
+)
+
+if uploaded_file is not None:
+
+    if uploaded_file.name.endswith(".csv"):
+        df = pd.read_csv(uploaded_file)
+
+    else:
+        df = pd.read_excel(uploaded_file)
+
+    st.session_state.uploaded_df = df
+    st.sidebar.success("Dataset Uploaded")
 
 
 # -----------------------------
@@ -127,7 +153,7 @@ if st.sidebar.button("Connect"):
 
 
 # -----------------------------
-# AI SQL Query
+# Ask Database
 # -----------------------------
 
 st.divider()
@@ -135,28 +161,49 @@ st.subheader("🧠 Ask Database")
 
 query = st.text_input("Ask business question")
 
-if query and st.session_state.engine:
+if query:
 
-    with st.spinner("Generating SQL..."):
-
-        sql = generate_sql(
-            st.session_state.schema,
-            query
-        )
-
-    st.code(sql, language="sql")
-
-    with st.spinner("Fetching Data..."):
-
-        df = run_query(
-            st.session_state.engine,
-            sql
-        )
-
-    st.dataframe(df)
+    # Reset insights on new query
+    st.session_state.pop("insights", None)
 
     # -----------------------------
-    # KPI Cards
+    # Case 1 — Uploaded Dataset
+    # -----------------------------
+
+    if "uploaded_df" in st.session_state:
+
+        df = st.session_state.uploaded_df
+
+        st.subheader("Using Uploaded Dataset")
+        st.dataframe(df)
+
+    # -----------------------------
+    # Case 2 — Database
+    # -----------------------------
+
+    else:
+
+        with st.spinner("Generating SQL..."):
+
+            sql = generate_sql(
+                st.session_state.schema,
+                query
+            )
+
+        st.code(sql, language="sql")
+
+        with st.spinner("Fetching Data..."):
+
+            df = run_query(
+                st.session_state.engine,
+                sql
+            )
+
+        st.dataframe(df)
+
+
+    # -----------------------------
+    # KPI Overview
     # -----------------------------
 
     st.subheader("📊 KPI Overview")
@@ -171,21 +218,32 @@ if query and st.session_state.engine:
     if len(numeric_cols) >= 2:
         col2.metric("Average", round(df[numeric_cols[1]].mean(),2))
 
-    if len(numeric_cols) >= 3:
-        col3.metric("Records", len(df))
+    col3.metric("Records", len(df))
 
 
     # -----------------------------
-    # Generate Dashboards
+    # Dashboards
     # -----------------------------
 
     with st.spinner("Generating Dashboards..."):
 
+        kpi = extract_kpi(query)
+
+    # fallback if extraction fails
+        if not kpi or "kpi" not in kpi:
+            numeric_cols = df.select_dtypes(include="number").columns
+
+            kpi = {
+                "kpi": [numeric_cols[0]],
+                "chart": "bar",
+                "color": "blue"
+            }
+
         charts = generate_dashboards(
             df,
-            [df.columns[-1]],
-            "bar",
-            "blue"
+            kpi["kpi"],
+            kpi.get("chart", "bar"),
+            kpi.get("color", "blue")
         )
 
     st.subheader("Select Dashboard")
@@ -212,16 +270,19 @@ if query and st.session_state.engine:
             "dashboard.csv"
         )
 
+
         # -----------------------------
         # AI Insights
         # -----------------------------
 
         st.subheader("🧠 AI Insights")
 
-        with st.spinner("Generating Insights..."):
-            insights = generate_insights(df)
+        if "insights" not in st.session_state:
 
-        st.write(insights)
+            with st.spinner("Generating Insights..."):
+                st.session_state.insights = generate_insights(df)
+
+        st.write(st.session_state.insights)
 
 
 # -----------------------------
@@ -245,8 +306,18 @@ with col2:
 
 if question:
 
+    if "uploaded_df" in st.session_state:
+        data = st.session_state.uploaded_df
+
+    elif "engine" in st.session_state:
+        data = df
+
+    else:
+        st.warning("Upload dataset or connect database first")
+        st.stop()
+
     answer = ask_dashboard(
-        df,
+        data,
         "general",
         question
     )
@@ -261,16 +332,16 @@ if question:
     st.audio(audio)
 
 
-# -----------------------------
-# Chat History
-# -----------------------------
+# # -----------------------------
+# # Chat History
+# # -----------------------------
 
-st.divider()
+# st.divider()
 
-st.subheader("💬 Chat History")
+# st.subheader("💬 Chat History")
 
-for chat in st.session_state.chat_history:
+# for chat in st.session_state.chat_history:
 
-    st.markdown(f"**User:** {chat['user']}")
-    st.markdown(f"**AI:** {chat['bot']}")
-    st.write("---")
+#     st.markdown(f"**User:** {chat['user']}")
+#     st.markdown(f"**AI:** {chat['bot']}")
+#     st.write("---")
