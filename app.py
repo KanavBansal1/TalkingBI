@@ -71,7 +71,6 @@ if not st.session_state.logged_in:
 
 
 # Logout
-
 if st.sidebar.button("Logout"):
     st.session_state.logged_in = False
     st.rerun()
@@ -106,7 +105,6 @@ if uploaded_file is not None:
 
     if uploaded_file.name.endswith(".csv"):
         df = pd.read_csv(uploaded_file)
-
     else:
         df = pd.read_excel(uploaded_file)
 
@@ -161,26 +159,20 @@ st.subheader("🧠 Ask Database")
 
 query = st.text_input("Ask business question")
 
+df = None
+
 if query:
 
-    # Reset insights on new query
     st.session_state.pop("insights", None)
 
-    # -----------------------------
-    # Case 1 — Uploaded Dataset
-    # -----------------------------
-
+    # Uploaded dataset
     if "uploaded_df" in st.session_state:
 
         df = st.session_state.uploaded_df
-
         st.subheader("Using Uploaded Dataset")
         st.dataframe(df)
 
-    # -----------------------------
-    # Case 2 — Database
-    # -----------------------------
-
+    # Database
     else:
 
         with st.spinner("Generating SQL..."):
@@ -202,9 +194,11 @@ if query:
         st.dataframe(df)
 
 
-    # -----------------------------
-    # KPI Overview
-    # -----------------------------
+# -----------------------------
+# KPI + Dashboard Section
+# -----------------------------
+
+if df is not None:
 
     st.subheader("📊 KPI Overview")
 
@@ -225,28 +219,29 @@ if query:
     # Dashboards
     # -----------------------------
 
+    st.subheader("Select Dashboard")
+
     with st.spinner("Generating Dashboards..."):
 
-        kpi = extract_kpi(query)
+        numeric_cols = df.select_dtypes(include="number").columns
+        categorical_cols = df.select_dtypes(exclude="number").columns
 
-    # fallback if extraction fails
-        if not kpi or "kpi" not in kpi:
-            numeric_cols = df.select_dtypes(include="number").columns
-
-            kpi = {
-                "kpi": [numeric_cols[0]],
-                "chart": "bar",
-                "color": "blue"
-            }
+        # Smart column detection
+        if "Sales" in df.columns:
+            value_col = "Sales"
+        elif "Value" in df.columns:
+            value_col = "Value"
+        elif len(numeric_cols) > 0:
+            value_col = numeric_cols[-1]
+        else:
+            value_col = df.columns[-1]
 
         charts = generate_dashboards(
             df,
-            kpi["kpi"],
-            kpi.get("chart", "bar"),
-            kpi.get("color", "blue")
+            [value_col],
+            "bar",
+            "blue"
         )
-
-    st.subheader("Select Dashboard")
 
     selected = show_dashboard_cards(charts)
 
@@ -309,7 +304,7 @@ if question:
     if "uploaded_df" in st.session_state:
         data = st.session_state.uploaded_df
 
-    elif "engine" in st.session_state:
+    elif df is not None:
         data = df
 
     else:
@@ -330,18 +325,3 @@ if question:
 
     st.write(answer)
     st.audio(audio)
-
-
-# # -----------------------------
-# # Chat History
-# # -----------------------------
-
-# st.divider()
-
-# st.subheader("💬 Chat History")
-
-# for chat in st.session_state.chat_history:
-
-#     st.markdown(f"**User:** {chat['user']}")
-#     st.markdown(f"**AI:** {chat['bot']}")
-#     st.write("---")
