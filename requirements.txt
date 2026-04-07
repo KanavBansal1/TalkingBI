@@ -10,3 +10,4 @@ gtts
 kaleido
 python-dotenv
 pysqlite3-binary
+psycopg2-binary
