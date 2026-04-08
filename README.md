@@ -178,3 +178,5 @@ Give it a star ⭐ on GitHub
 🎉 Final
 
 Talking BI simplifies data analytics by enabling users to talk to their data and automatically generate dashboards and insights.
+
+DeployedLink - https://talkingbi-mhw7zywwke4fbabnk6ajxq.streamlit.app/
